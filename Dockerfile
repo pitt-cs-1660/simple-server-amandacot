@@ -4,7 +4,6 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 WORKDIR /app
 COPY pyproject.toml ./
-COPY uv.lock ./
 RUN uv venv "$VIRTUAL_ENV" \
  && . "$VIRTUAL_ENV/bin/activate" \
  && uv sync --no-install-project --active
