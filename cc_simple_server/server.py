@@ -29,14 +29,26 @@ async def read_root():
 async def create_task(task_data: TaskCreate):
     """
     Create a new task
-
+    
     Args:
         task_data (TaskCreate): The task data to be created
 
     Returns:
         TaskRead: The created task data
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+
+    data = task_data.model_dump()  
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO tasks (title, description, completed) VALUES (?, ?, ?)",
+        (data["title"], data["description"], data.get("completed", False)),
+    )
+    conn.commit()
+
+    row = cur.execute("SELECT * FROM tasks WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return TaskRead(**dict(row))
 
 
 # GET ROUTE to get all tasks
@@ -51,7 +63,9 @@ async def get_tasks():
     Returns:
         list[TaskRead]: A list of all tasks in the database
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    conn = get_db_connection()
+    rows = conn.cursor().execute("SELECT * FROM tasks").fetchall()
+    return [TaskRead(**dict(r)) for r in rows]
 
 
 # UPDATE ROUTE data is sent in the body of the request and the task_id is in the URL
@@ -67,7 +81,20 @@ async def update_task(task_id: int, task_data: TaskCreate):
     Returns:
         TaskRead: The updated task data
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    data = task_data.model_dump()  
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE tasks SET title = ?, description = ?, completed = ? WHERE id = ?",
+        (data["title"], data["description"], data.get("completed", False), task_id),
+    )
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    conn.commit()
+
+    row = cur.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    return TaskRead(**dict(row))
 
 
 # DELETE ROUTE task_id is in the URL
@@ -82,4 +109,10 @@ async def delete_task(task_id: int):
     Returns:
         dict: A message indicating that the task was deleted successfully
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    conn.commit()
+    return {"message": f"Task {task_id} deleted successfully"}
